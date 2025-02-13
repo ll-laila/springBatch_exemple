@@ -1,4 +1,4 @@
-package com.example.springbatch_test1.student;
+package com.example.springbatch_test1.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Job;

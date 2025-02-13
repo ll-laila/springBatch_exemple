@@ -21,3 +21,16 @@ spring:
 
 server:
   port: 9090
+
+
+
+
+logging:
+  level:
+    org:
+      springframework:
+        batch:
+          DEBUG
+        oxm:
+           jaxb:
+              DEBUG
