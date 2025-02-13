@@ -25,7 +25,9 @@ import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
 import org.springframework.batch.item.file.mapping.DefaultLineMapper;
 import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
 import org.springframework.batch.item.json.JacksonJsonObjectMarshaller;
+import org.springframework.batch.item.json.JacksonJsonObjectReader;
 import org.springframework.batch.item.json.JsonFileItemWriter;
+import org.springframework.batch.item.json.JsonItemReader;
 import org.springframework.batch.item.json.builder.JsonFileItemWriterBuilder;
 import org.springframework.batch.item.xml.StaxEventItemReader;
 import org.springframework.batch.item.xml.StaxEventItemWriter;
@@ -74,7 +76,7 @@ public class BatchConfig {
     /******************************* Step 1 : from csv to db *************************************/
 
     @Bean
-    public FlatFileItemReader<Student> reader() {
+    public FlatFileItemReader<Student> csvReader() {
         FlatFileItemReader<Student> itemReader = new FlatFileItemReader<>();
         itemReader.setResource(new FileSystemResource("src/main/resources/students.csv"));
         itemReader.setName("csvReader");
@@ -118,9 +120,9 @@ public class BatchConfig {
 
     @Bean
     public Step step1() {
-        return new StepBuilder("ImportStudents", jobRepository)
+        return new StepBuilder("ImportStudentsCSV", jobRepository)
                 .<Student, Student>chunk(20, platformTransactionManager)
-                .reader(reader())
+                .reader(csvReader())
                 .processor(processor())
                 .writer(writer())
                 .build();
@@ -128,12 +130,33 @@ public class BatchConfig {
 
 
 
+    /******************************* Step 2 : from json to db *************************************/
 
-
-    /******************************* Step 2 : from db to db *************************************/
 
     @Bean
-    public JpaPagingItemReader<Student> studentReader() {
+    public JsonItemReader<Student> jsonReader() {
+        JsonItemReader<Student> itemReader = new JsonItemReader<>();
+        itemReader.setResource(new FileSystemResource("src/main/resources/students.json"));
+        itemReader.setJsonObjectReader(new JacksonJsonObjectReader<>(Student.class));
+        return itemReader;
+    }
+
+    @Bean
+    public Step step2() {
+        return new StepBuilder("ImportStudentsJSOM", jobRepository)
+                .<Student, Student>chunk(20, platformTransactionManager)
+                .reader(jsonReader())
+                .processor(processor())
+                .writer(writer())
+                .build();
+    }
+
+
+
+    /******************************* Step 3 : from db to db *************************************/
+
+    @Bean
+    public JpaPagingItemReader<Student> studentDBReader() {
         JpaPagingItemReader<Student> reader = new JpaPagingItemReader<>();
         reader.setQueryString("SELECT s FROM Student s");
         reader.setEntityManagerFactory(entityManagerFactory);
@@ -148,7 +171,7 @@ public class BatchConfig {
     }
 
     @Bean
-    public RepositoryItemWriter<AcademicEmail> academicEmailWriter() {
+    public RepositoryItemWriter<AcademicEmail> academicEmaiDBlWriter() {
         RepositoryItemWriter<AcademicEmail> writer = new RepositoryItemWriter<>();
         writer.setRepository(academicEmailRepository);
         writer.setMethodName("save");
@@ -157,12 +180,12 @@ public class BatchConfig {
 
 
     @Bean
-    public Step step2() {
+    public Step step3() {
         return new StepBuilder("emailGeneration", jobRepository)
                 .<Student, AcademicEmail>chunk(6, platformTransactionManager)
-                .reader(studentReader())
+                .reader(studentDBReader())
                 .processor(studentToAcademicEmailProcessor())
-                .writer(academicEmailWriter())
+                .writer(academicEmaiDBlWriter())
                 .build();
     }
 
@@ -171,19 +194,19 @@ public class BatchConfig {
 
 
 
-    /******************************* Step 3 : from db to json **************************************/
+    /******************************* Step 4 : from db to json **************************************/
 
 
     // Processor pour affecter les étudiants à une filière selon leur note
     @Bean
-    public StudentFiliereProcessor studentFiliereProcessor() {
+    public StudentFiliereProcessor studentFiliereDBProcessor() {
         return new StudentFiliereProcessor();
     }
 
 
 
     @Bean
-    public JsonFileItemWriter<StudentFiliere> studentFiliereWriter() {
+    public JsonFileItemWriter<StudentFiliere> studentFiliereDBWriter() {
         return new JsonFileItemWriterBuilder<StudentFiliere>()
                 .name("studentFiliereJsonWriter")
                 .resource(new FileSystemResource("src/main/resources/students_filiere.json"))
@@ -195,12 +218,12 @@ public class BatchConfig {
 
     // Step pour effectuer le traitement d'affectation des étudiants aux filières
     @Bean
-    public Step step3() {
+    public Step step4() {
         return new StepBuilder("filiereAffectation", jobRepository)
                 .<Student, StudentFiliere>chunk(6, platformTransactionManager)
-                .reader(studentReader())
-                .processor(studentFiliereProcessor())
-                .writer(studentFiliereWriter())
+                .reader(studentDBReader())
+                .processor(studentFiliereDBProcessor())
+                .writer(studentFiliereDBWriter())
                 .build();
     }
 
@@ -208,7 +231,7 @@ public class BatchConfig {
 
 
 
-    /******************************** Step 4 : from xml to db/xml ************************************/
+    /******************************** Step 5 : from xml to db ************************************/
 
 
 
@@ -233,19 +256,6 @@ public class BatchConfig {
 
 
     @Bean
-    public StaxEventItemWriter<Course> xmlWriter() {
-        Jaxb2Marshaller marshaller = new Jaxb2Marshaller();
-        marshaller.setClassesToBeBound(Course.class);
-        return new StaxEventItemWriterBuilder<Course>()
-                .name("courseWriter")
-                .resource(new FileSystemResource("output.xml"))
-                .marshaller(marshaller)
-                .rootTagName("courses")
-                .build();
-   }
-
-
-    @Bean
     public RepositoryItemWriter<Course> dbWriter() {
         RepositoryItemWriter<Course> writer = new RepositoryItemWriter<>();
         writer.setRepository(courseRepository);
@@ -255,7 +265,7 @@ public class BatchConfig {
 
 
     @Bean
-    public Step step4() {
+    public Step step5() {
         return new StepBuilder("courses", jobRepository)
                 .<Course, Course>chunk(3, platformTransactionManager)
                 .reader(xmlReader())
@@ -268,7 +278,7 @@ public class BatchConfig {
 
 
 
-    /******************************** Step 5 : from db to pdf **********************************/
+    /******************************** Step 6 : from db to pdf **********************************/
 
     @Bean
     public CourseStudentProcessor courseStudentProcessor() {
@@ -333,10 +343,10 @@ public class BatchConfig {
 
 
     @Bean
-    public Step step5() {
+    public Step step6() {
         return new StepBuilder("coursesStudent", jobRepository)
                 .<Student, CourseStudent>chunk(20, platformTransactionManager)
-                .reader(studentReader())
+                .reader(studentDBReader())
                 .processor(courseStudentProcessor())
                 .writer(pdfCourseStudentWriter())
                 .build();
@@ -349,14 +359,39 @@ public class BatchConfig {
     public Job runJob() {
         return new JobBuilder("job", jobRepository)
                 .start(step1()) // from csv to db
-                .next(step2()) // from db to db
-                .next(step3())  // from db to json
-                .next(step4()) // from xml to db or xml
-                .next(step5()) // from db to pdf
+                .next(step2()) // from json to db
+                .next(step3()) // from db to db
+                .next(step4())  // from db to json
+                .next(step5()) // from xml to db or xml
+                .next(step6()) // from db to pdf
                 .build();
     }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+//    @Bean
+//    public StaxEventItemWriter<Course> xmlWriter() {
+//        Jaxb2Marshaller marshaller = new Jaxb2Marshaller();
+//        marshaller.setClassesToBeBound(Course.class);
+//        return new StaxEventItemWriterBuilder<Course>()
+//                .name("courseWriter")
+//                .resource(new FileSystemResource("output.xml"))
+//                .marshaller(marshaller)
+//                .rootTagName("courses")
+//                .build();
+//    }
 
 
 
