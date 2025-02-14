@@ -11,12 +11,17 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ExecutionContext;
+import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.data.RepositoryItemWriter;
 import org.springframework.batch.item.database.JpaPagingItemReader;
@@ -30,6 +35,7 @@ import org.springframework.batch.item.json.JacksonJsonObjectReader;
 import org.springframework.batch.item.json.JsonFileItemWriter;
 import org.springframework.batch.item.json.JsonItemReader;
 import org.springframework.batch.item.json.builder.JsonFileItemWriterBuilder;
+import org.springframework.batch.item.support.AbstractItemCountingItemStreamItemReader;
 import org.springframework.batch.item.xml.StaxEventItemReader;
 import org.springframework.batch.item.xml.StaxEventItemWriter;
 import org.springframework.batch.item.xml.builder.StaxEventItemReaderBuilder;
@@ -43,6 +49,7 @@ import org.springframework.oxm.jaxb.Jaxb2Marshaller;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import java.io.*;
+import java.util.Iterator;
 import java.util.List;
 
 
@@ -418,6 +425,8 @@ public class BatchConfig {
 
 
 
+
+
     /******************************** Step 8 : from txt to xml **********************************/
 
     @Bean
@@ -477,6 +486,73 @@ public class BatchConfig {
 
 
 
+
+    /******************************** Step 9 : excel to db **********************************/
+
+
+    @Bean
+    public ItemReader<Student> excelReader() {
+        AbstractItemCountingItemStreamItemReader<Student> reader = new AbstractItemCountingItemStreamItemReader<Student>() {
+            private Iterator<Row> rowIterator;
+
+            @Override
+            protected void doOpen() throws Exception {
+                FileInputStream file = new FileInputStream(new File("src/main/resources/inputs/students.xlsx"));
+                Workbook workbook = WorkbookFactory.create(file);
+                Sheet sheet = workbook.getSheetAt(0);
+                rowIterator = sheet.iterator();
+                rowIterator.next(); // Skip header
+            }
+
+            @Override
+            protected Student doRead() {
+                if (rowIterator != null && rowIterator.hasNext()) {
+                    Row row = rowIterator.next();
+                    Student student = new Student();
+                    student.setId((int) row.getCell(0).getNumericCellValue());
+                    student.setFirstName(row.getCell(1).getStringCellValue());
+                    student.setLastName(row.getCell(2).getStringCellValue());
+                    student.setAge(String.valueOf((int) row.getCell(3).getNumericCellValue()));
+                    student.setEmail(row.getCell(4).getStringCellValue());
+                    student.setPhoneNumber(row.getCell(5).getStringCellValue());
+                    student.setNoteGenerale(row.getCell(6).getNumericCellValue());
+                    return student;
+                }
+                return null;
+            }
+
+            @Override
+            protected void doClose() {}
+        };
+        reader.setName("excelReader");
+        return reader;
+    }
+
+    @Bean
+    public RepositoryItemWriter<Student> excelWriter() {
+        RepositoryItemWriter<Student> writer = new RepositoryItemWriter<>();
+        writer.setRepository(repository);
+        writer.setMethodName("save");
+        return writer;
+    }
+
+    @Bean
+    public Step step9() {
+        return new StepBuilder("ExcelToDb", jobRepository)
+                .<Student, Student>chunk(10, platformTransactionManager)
+                .reader(excelReader())
+                .processor(processor())
+                .writer(excelWriter())
+                .build();
+    }
+
+
+
+
+
+
+
+
     /******************************* Job ****************************************/
 
     @Bean
@@ -490,6 +566,7 @@ public class BatchConfig {
                 .next(step6()) //  db -> pdf
                 .next(step7()) // json -> txt
                 .next(step8())  // txt -> xml
+                .next(step9()) // excel to db
                 .build();
     }
 
