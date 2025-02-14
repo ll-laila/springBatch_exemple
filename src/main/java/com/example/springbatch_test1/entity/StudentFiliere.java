@@ -4,6 +4,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.xml.bind.annotation.XmlElement;
+import jakarta.xml.bind.annotation.XmlRootElement;
 import lombok.Getter;
 import lombok.Setter;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -12,6 +14,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @Getter
 @Setter
 @Entity
+@XmlRootElement(name = "StudentFiliere")
 public class StudentFiliere {
 
     @Id
@@ -26,8 +29,20 @@ public class StudentFiliere {
 
     private String filiere;
 
+    public StudentFiliere() {}
+
+    public StudentFiliere(String studentId, String studentName, String email, String filiere) {
+        this.id = Long.parseLong(studentId);
+        String[] nameParts = studentName.trim().split("\\s+", 2);
+        this.firstName = nameParts[0]; // Premier mot = prénom
+        this.lastName = nameParts.length > 1 ? nameParts[1] : ""; // Le reste = nom (si disponible)
+        this.email = email;
+        this.filiere = filiere;
+    }
 
 
+
+    @XmlElement(name = "id")
     public Long getId() {
         return id;
     }
@@ -37,20 +52,25 @@ public class StudentFiliere {
     }
 
 
+    @XmlElement(name = "firstName")
     public String getFirstName() {
         return firstName;
     }
 
+
+    @XmlElement(name = "lastName")
     public String getLastName() {
         return lastName;
     }
 
 
+    @XmlElement(name = "email")
     public String getEmail() {
         return email;
     }
 
 
+    @XmlElement(name = "filiere")
     public String getFiliere() {
         return filiere;
     }
