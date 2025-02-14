@@ -2,6 +2,8 @@ package com.example.springbatch_test1.entity;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.xml.bind.annotation.XmlElement;
+import jakarta.xml.bind.annotation.XmlRootElement;
 import lombok.*;
 
 @Entity
@@ -10,6 +12,7 @@ import lombok.*;
 @Builder
 @AllArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@XmlRootElement(name = "Student")
 public class Student {
 
     @Id
@@ -26,11 +29,7 @@ public class Student {
 
 
 
-
-
-
-
-
+    @XmlElement(name = "id")
     public Integer getId() {
         return id;
     }
@@ -40,6 +39,8 @@ public class Student {
     }
 
 
+
+    @XmlElement(name = "firstName")
     public String getFirstName() {
         return firstName;
     }
@@ -49,6 +50,8 @@ public class Student {
     }
 
 
+
+    @XmlElement(name = "lastName")
     public String getLastName() {
         return lastName;
     }
@@ -58,6 +61,8 @@ public class Student {
     }
 
 
+
+    @XmlElement(name = "age")
     public String getAge() {
         return age;
     }
@@ -67,6 +72,7 @@ public class Student {
     }
 
 
+    @XmlElement(name = "email")
     public String getEmail() {
         return email;
     }
@@ -76,6 +82,7 @@ public class Student {
     }
 
 
+    @XmlElement(name = "phoneNumber")
     public String getPhoneNumber() {
         return phoneNumber;
     }
@@ -85,6 +92,7 @@ public class Student {
     }
 
 
+    @XmlElement(name = "noteGenerale")
     public double getNoteGenerale() {
         return noteGenerale;
     }

@@ -2,16 +2,12 @@ package com.example.springbatch_test1.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.util.ArrayList;
 import java.util.List;
 
-@Getter
-@Setter
-@Entity
+
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "course_student")
 public class CourseStudent {
 
     @Id
@@ -35,7 +31,7 @@ public class CourseStudent {
 
 
 
-    // Getters / Settersß
+    // Getters / Setters
 
 
     public Integer getId() {

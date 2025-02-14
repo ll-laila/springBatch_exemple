@@ -3,7 +3,6 @@ package com.example.springbatch_test1.config;
 import com.example.springbatch_test1.entity.*;
 import com.example.springbatch_test1.repo.AcademicEmailRepository;
 import com.example.springbatch_test1.repo.CourseRepository;
-import com.example.springbatch_test1.repo.CourseStudentRepository;
 import com.example.springbatch_test1.repo.StudentRepository;
 import jakarta.persistence.EntityManagerFactory;
 import lombok.RequiredArgsConstructor;
@@ -74,10 +73,6 @@ public class BatchConfig {
 
     @Autowired
     private CourseRepository courseRepository;
-
-    @Autowired
-    private CourseStudentRepository courseStudentRepository;
-
 
 
 
@@ -173,7 +168,193 @@ public class BatchConfig {
 
 
 
-    /******************************* Step 3 : from db to db *************************************/
+    /******************************** Step 3 : excel to db **********************************/
+
+
+    @Bean
+    public ItemReader<Student> excelReader() {
+        AbstractItemCountingItemStreamItemReader<Student> reader = new AbstractItemCountingItemStreamItemReader<Student>() {
+            private Iterator<Row> rowIterator;
+
+            @Override
+            protected void doOpen() throws Exception {
+                FileInputStream file = new FileInputStream(new File("src/main/resources/inputs/students.xlsx"));
+                Workbook workbook = WorkbookFactory.create(file);
+                Sheet sheet = workbook.getSheetAt(0);
+                rowIterator = sheet.iterator();
+                rowIterator.next(); // Skip header
+            }
+
+            @Override
+            protected Student doRead() {
+                if (rowIterator != null && rowIterator.hasNext()) {
+                    Row row = rowIterator.next();
+                    Student student = new Student();
+                    student.setId((int) row.getCell(0).getNumericCellValue());
+                    student.setFirstName(row.getCell(1).getStringCellValue());
+                    student.setLastName(row.getCell(2).getStringCellValue());
+                    student.setAge(String.valueOf((int) row.getCell(3).getNumericCellValue()));
+                    student.setEmail(row.getCell(4).getStringCellValue());
+                    student.setPhoneNumber(row.getCell(5).getStringCellValue());
+                    student.setNoteGenerale(row.getCell(6).getNumericCellValue());
+                    return student;
+                }
+                return null;
+            }
+
+            @Override
+            protected void doClose() {}
+        };
+        reader.setName("excelReader");
+        return reader;
+    }
+
+    @Bean
+    public RepositoryItemWriter<Student> excelWriter() {
+        RepositoryItemWriter<Student> writer = new RepositoryItemWriter<>();
+        writer.setRepository(repository);
+        writer.setMethodName("save");
+        return writer;
+    }
+
+    @Bean
+    public Step step3() {
+        return new StepBuilder("ExcelToDb", jobRepository)
+                .<Student, Student>chunk(10, platformTransactionManager)
+                .reader(excelReader())
+                .processor(processor())
+                .writer(excelWriter())
+                .build();
+    }
+
+
+
+
+
+
+
+
+    /******************************** Step 4 : db to xml **********************************/
+
+    @Bean
+    public StaxEventItemWriter<Student> xmlWriter3() {
+        Jaxb2Marshaller marshaller = new Jaxb2Marshaller();
+        marshaller.setClassesToBeBound(Student.class);
+
+        StaxEventItemWriter<Student> writer = new StaxEventItemWriterBuilder<Student>()
+                .name("AllStudentsWriter")
+                .resource(new FileSystemResource("src/main/resources/outputs/allStudents.xml"))
+                .marshaller(marshaller)
+                .rootTagName("Students")
+                .saveState(false)
+                .build();
+
+        writer.open(new ExecutionContext());
+
+        return writer;
+    }
+
+
+    @Bean
+    public Step step4() {
+        return new StepBuilder("DbToXml", jobRepository)
+                .<Student, Student>chunk(60, platformTransactionManager)
+                .reader(studentDBReader())
+                .processor(processor())
+                .writer(xmlWriter3())
+                .build();
+    }
+
+
+
+
+
+    /******************************** Step 5 : csv to xml **********************************/
+
+
+    @Bean
+    public StaxEventItemWriter<Student> xmlWriter2() {
+        Jaxb2Marshaller marshaller = new Jaxb2Marshaller();
+        marshaller.setClassesToBeBound(Student.class);
+
+        StaxEventItemWriter<Student> writer = new StaxEventItemWriterBuilder<Student>()
+                .name("StudentsWriter")
+                .resource(new FileSystemResource("src/main/resources/outputs/students.xml"))
+                .marshaller(marshaller)
+                .rootTagName("Students")
+                .saveState(false)
+                .build();
+
+        writer.open(new ExecutionContext());
+
+        return writer;
+    }
+
+
+    @Bean
+    public Step step5() {
+        return new StepBuilder("CsvToXml", jobRepository)
+                .<Student, Student>chunk(20, platformTransactionManager)
+                .reader(csvReader())
+                .processor(processor())
+                .writer(xmlWriter2())
+                .build();
+    }
+
+
+
+
+
+
+
+
+    /******************************** Step 6 : from xml to db ************************************/
+
+
+    @Bean
+    public StaxEventItemReader<Course> xmlReader() {
+        Jaxb2Marshaller unmarshaller = new Jaxb2Marshaller();
+        unmarshaller.setClassesToBeBound(Course.class);
+        return new StaxEventItemReaderBuilder<Course>()
+                .name("courseReader")
+                .resource(new ClassPathResource("inputs/courses.xml"))
+                .addFragmentRootElements("course")
+                .unmarshaller(unmarshaller)
+                .build();
+    }
+
+
+    @Bean
+    public CourseProcessor xmlProcessor() {
+        return new CourseProcessor();
+    }
+
+
+    @Bean
+    public RepositoryItemWriter<Course> dbWriter() {
+        RepositoryItemWriter<Course> writer = new RepositoryItemWriter<>();
+        writer.setRepository(courseRepository);
+        writer.setMethodName("save");
+        return writer;
+    }
+
+
+    @Bean
+    public Step step6() {
+        return new StepBuilder("xmlToDB", jobRepository)
+                .<Course, Course>chunk(3, platformTransactionManager)
+                .reader(xmlReader())
+                .processor(xmlProcessor())
+                .writer(dbWriter())
+                .build();
+    }
+
+
+
+
+
+
+    /******************************* Step 7 : from db to db *************************************/
 
     @Bean
     public JpaPagingItemReader<Student> studentDBReader() {
@@ -200,7 +381,7 @@ public class BatchConfig {
 
 
     @Bean
-    public Step step3() {
+    public Step step7() {
         return new StepBuilder("emailGeneration", jobRepository)
                 .<Student, AcademicEmail>chunk(6, platformTransactionManager)
                 .reader(studentDBReader())
@@ -214,9 +395,7 @@ public class BatchConfig {
 
 
 
-
-
-    /******************************* Step 4 : from db to json **************************************/
+    /******************************* Step 8 : from db to json **************************************/
 
 
     // Processor pour affecter les étudiants à une filière selon leur note generale
@@ -224,7 +403,6 @@ public class BatchConfig {
     public StudentFiliereProcessor studentFiliereDBProcessor() {
         return new StudentFiliereProcessor();
     }
-
 
 
     @Bean
@@ -240,7 +418,7 @@ public class BatchConfig {
 
     // Step pour effectuer le traitement d'affectation des étudiants aux filières
     @Bean
-    public Step step4() {
+    public Step step8() {
         return new StepBuilder("dbToJson", jobRepository)
                 .<Student, StudentFiliere>chunk(6, platformTransactionManager)
                 .reader(studentDBReader())
@@ -253,48 +431,102 @@ public class BatchConfig {
 
 
 
-
-
-
-    /******************************** Step 5 : from xml to db ************************************/
-
-
+    /******************************** Step 9 : json to txt **********************************/
 
     @Bean
-    public StaxEventItemReader<Course> xmlReader() {
-        Jaxb2Marshaller unmarshaller = new Jaxb2Marshaller();
-        unmarshaller.setClassesToBeBound(Course.class);
-        return new StaxEventItemReaderBuilder<Course>()
-                    .name("courseReader")
-                    .resource(new ClassPathResource("inputs/courses.xml"))
-                    .addFragmentRootElements("course")
-                    .unmarshaller(unmarshaller)
-                    .build();
+    public JsonItemReader<StudentFiliere> jsonFiliereReader() {
+        JsonItemReader<StudentFiliere> itemReader = new JsonItemReader<>();
+        itemReader.setResource(new FileSystemResource("src/main/resources/outputs/students_filiere.json"));
+        itemReader.setJsonObjectReader(new JacksonJsonObjectReader<>(StudentFiliere.class));
+        return itemReader;
+    }
+
+    @Bean
+    public ItemWriter<StudentFiliere> txtStudentFiliereWriter() {
+        return items -> {
+            File file = new File("src/main/resources/inputs/students_filiere.txt");
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+                for (StudentFiliere studentFiliere : items) {
+                    writer.write("ID: " + studentFiliere.getId() + ", ");
+                    writer.write("Nom: " + studentFiliere.getFirstName() + " " + studentFiliere.getLastName() + ", ");
+                    writer.write("Email: " + studentFiliere.getEmail() + ", ");
+                    writer.write("Filière: " + studentFiliere.getFiliere() + "\n");
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        };
     }
 
 
+
     @Bean
-    public CourseProcessor xmlProcessor() {
-        return new CourseProcessor();
+    public Step step9() {
+        return new StepBuilder("jsonToTxt", jobRepository)
+                .<StudentFiliere, StudentFiliere>chunk(40, platformTransactionManager)
+                .reader(jsonFiliereReader())
+                .writer(txtStudentFiliereWriter())
+                .build();
     }
 
 
+
+
+
+    /******************************** Step 10 : from txt to xml **********************************/
+
     @Bean
-    public RepositoryItemWriter<Course> dbWriter() {
-        RepositoryItemWriter<Course> writer = new RepositoryItemWriter<>();
-        writer.setRepository(courseRepository);
-        writer.setMethodName("save");
+    public FlatFileItemReader<StudentFiliere> txtReader() {
+        FlatFileItemReader<StudentFiliere> reader = new FlatFileItemReader<>();
+        reader.setResource(new FileSystemResource("src/main/resources/inputs/students_filiere.txt"));
+        reader.setLineMapper(new LineMapper<StudentFiliere>() {
+            @Override
+            public StudentFiliere mapLine(String line, int lineNumber) throws Exception {
+                System.out.println("Lecture de la ligne : " + line);
+                String[] fields = line.split(",\\s*");
+                String studentId = fields[0].split(":")[1].trim();
+                String studentName = fields[1].split(":")[1].trim();
+                String email = fields[2].split(":")[1].trim();
+                String filiere = fields[3].split(":")[1].trim();
+
+                StudentFiliere student = new StudentFiliere(studentId, studentName, email, filiere);
+                System.out.println("Objet créé : " + student);
+                return student;
+            }
+        });
+        return reader;
+    }
+
+
+
+
+
+    @Bean
+    public StaxEventItemWriter<StudentFiliere> xmlWriter() {
+        Jaxb2Marshaller marshaller = new Jaxb2Marshaller();
+        marshaller.setClassesToBeBound(StudentFiliere.class);
+
+        StaxEventItemWriter<StudentFiliere> writer = new StaxEventItemWriterBuilder<StudentFiliere>()
+                .name("StudentsFiliereWriter")
+                .resource(new FileSystemResource("src/main/resources/outputs/students_filiere.xml"))
+                .marshaller(marshaller)
+                .rootTagName("StudentsFiliere")
+                .saveState(false)
+                .build();
+
+        writer.open(new ExecutionContext());
+
         return writer;
     }
 
 
+
     @Bean
-    public Step step5() {
-        return new StepBuilder("xmlToDB", jobRepository)
-                .<Course, Course>chunk(3, platformTransactionManager)
-                .reader(xmlReader())
-                .processor(xmlProcessor())
-                .writer(dbWriter())
+    public Step step10() {
+        return new StepBuilder("txtToXml", jobRepository)
+                .<StudentFiliere, StudentFiliere>chunk(40, platformTransactionManager)
+                .reader(txtReader())
+                .writer(xmlWriter())
                 .build();
     }
 
@@ -303,8 +535,7 @@ public class BatchConfig {
 
 
 
-
-    /******************************** Step 6 : from db to pdf **********************************/
+    /******************************** Step 11 : from db to pdf **********************************/
 
     @Bean
     public CourseStudentProcessor courseStudentProcessor() {
@@ -369,7 +600,7 @@ public class BatchConfig {
 
 
     @Bean
-    public Step step6() {
+    public Step step11() {
         return new StepBuilder("dbToPdf", jobRepository)
                 .<Student, CourseStudent>chunk(20, platformTransactionManager)
                 .reader(studentDBReader())
@@ -382,191 +613,22 @@ public class BatchConfig {
 
 
 
-
-
-    /******************************** Step 7 : json to txt **********************************/
-
-    @Bean
-    public JsonItemReader<StudentFiliere> jsonFiliereReader() {
-        JsonItemReader<StudentFiliere> itemReader = new JsonItemReader<>();
-        itemReader.setResource(new FileSystemResource("src/main/resources/outputs/students_filiere.json"));
-        itemReader.setJsonObjectReader(new JacksonJsonObjectReader<>(StudentFiliere.class));
-        return itemReader;
-    }
-
-    @Bean
-    public ItemWriter<StudentFiliere> txtStudentFiliereWriter() {
-        return items -> {
-            File file = new File("src/main/resources/inputs/students_filiere.txt");
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
-                for (StudentFiliere studentFiliere : items) {
-                    writer.write("ID: " + studentFiliere.getId() + ", ");
-                    writer.write("Nom: " + studentFiliere.getFirstName() + " " + studentFiliere.getLastName() + ", ");
-                    writer.write("Email: " + studentFiliere.getEmail() + ", ");
-                    writer.write("Filière: " + studentFiliere.getFiliere() + "\n");
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        };
-    }
-
-
-
-    @Bean
-    public Step step7() {
-        return new StepBuilder("jsonToTxt", jobRepository)
-                .<StudentFiliere, StudentFiliere>chunk(40, platformTransactionManager)
-                .reader(jsonFiliereReader())
-                .writer(txtStudentFiliereWriter())
-                .build();
-    }
-
-
-
-
-
-
-    /******************************** Step 8 : from txt to xml **********************************/
-
-    @Bean
-    public FlatFileItemReader<StudentFiliere> txtReader() {
-        FlatFileItemReader<StudentFiliere> reader = new FlatFileItemReader<>();
-        reader.setResource(new FileSystemResource("src/main/resources/inputs/students_filiere.txt"));
-        reader.setLineMapper(new LineMapper<StudentFiliere>() {
-            @Override
-            public StudentFiliere mapLine(String line, int lineNumber) throws Exception {
-                System.out.println("Lecture de la ligne : " + line);
-                String[] fields = line.split(",\\s*");
-                String studentId = fields[0].split(":")[1].trim();
-                String studentName = fields[1].split(":")[1].trim();
-                String email = fields[2].split(":")[1].trim();
-                String filiere = fields[3].split(":")[1].trim();
-
-                StudentFiliere student = new StudentFiliere(studentId, studentName, email, filiere);
-                System.out.println("Objet créé : " + student);
-                return student;
-            }
-        });
-        return reader;
-    }
-
-
-
-
-
-    @Bean
-    public StaxEventItemWriter<StudentFiliere> xmlWriter() {
-        Jaxb2Marshaller marshaller = new Jaxb2Marshaller();
-        marshaller.setClassesToBeBound(StudentFiliere.class);
-
-        StaxEventItemWriter<StudentFiliere> writer = new StaxEventItemWriterBuilder<StudentFiliere>()
-                .name("StudentsFiliereWriter")
-                .resource(new FileSystemResource("src/main/resources/outputs/students_filiere.xml"))
-                .marshaller(marshaller)
-                .rootTagName("StudentsFiliere")
-                .saveState(false)
-                .build();
-
-        writer.open(new ExecutionContext());
-
-        return writer;
-    }
-
-
-
-    @Bean
-    public Step step8() {
-        return new StepBuilder("txtToXml", jobRepository)
-                .<StudentFiliere, StudentFiliere>chunk(40, platformTransactionManager)
-                .reader(txtReader())
-                .writer(xmlWriter())
-                .build();
-    }
-
-
-
-
-    /******************************** Step 9 : excel to db **********************************/
-
-
-    @Bean
-    public ItemReader<Student> excelReader() {
-        AbstractItemCountingItemStreamItemReader<Student> reader = new AbstractItemCountingItemStreamItemReader<Student>() {
-            private Iterator<Row> rowIterator;
-
-            @Override
-            protected void doOpen() throws Exception {
-                FileInputStream file = new FileInputStream(new File("src/main/resources/inputs/students.xlsx"));
-                Workbook workbook = WorkbookFactory.create(file);
-                Sheet sheet = workbook.getSheetAt(0);
-                rowIterator = sheet.iterator();
-                rowIterator.next(); // Skip header
-            }
-
-            @Override
-            protected Student doRead() {
-                if (rowIterator != null && rowIterator.hasNext()) {
-                    Row row = rowIterator.next();
-                    Student student = new Student();
-                    student.setId((int) row.getCell(0).getNumericCellValue());
-                    student.setFirstName(row.getCell(1).getStringCellValue());
-                    student.setLastName(row.getCell(2).getStringCellValue());
-                    student.setAge(String.valueOf((int) row.getCell(3).getNumericCellValue()));
-                    student.setEmail(row.getCell(4).getStringCellValue());
-                    student.setPhoneNumber(row.getCell(5).getStringCellValue());
-                    student.setNoteGenerale(row.getCell(6).getNumericCellValue());
-                    return student;
-                }
-                return null;
-            }
-
-            @Override
-            protected void doClose() {}
-        };
-        reader.setName("excelReader");
-        return reader;
-    }
-
-    @Bean
-    public RepositoryItemWriter<Student> excelWriter() {
-        RepositoryItemWriter<Student> writer = new RepositoryItemWriter<>();
-        writer.setRepository(repository);
-        writer.setMethodName("save");
-        return writer;
-    }
-
-    @Bean
-    public Step step9() {
-        return new StepBuilder("ExcelToDb", jobRepository)
-                .<Student, Student>chunk(10, platformTransactionManager)
-                .reader(excelReader())
-                .processor(processor())
-                .writer(excelWriter())
-                .build();
-    }
-
-
-
-
-
-
-
-
     /******************************* Job ****************************************/
 
     @Bean
     public Job runJob() {
         return new JobBuilder("job", jobRepository)
-                .start(step1()) //  csv -> db
-                .next(step2()) //   json -> db
-                .next(step3()) //  db -> db
-                .next(step4())  //  db -> json
-                .next(step5()) //  xml -> db
-                .next(step6()) //  db -> pdf
-                .next(step7()) // json -> txt
-                .next(step8())  // txt -> xml
-                .next(step9()) // excel to db
+                .start(step1()) //  csv -> db   (infos students)
+                .next(step2()) //   json -> db  (infos students)
+                .next(step3()) //  excel to db  (infos students)
+                .next(step4()) // xml -> db     (infos students) 
+                .next(step5()) // csv to xml    (infos students)
+                .next(step6()) // db to xml     (infos courses)
+                .next(step7()) //  db -> db     (email generation)
+                .next(step8())  //  db -> json  (students affectations)
+                .next(step9()) // json -> txt   (students affectations)
+                .next(step10())  // txt -> xml  (students affectations)
+                .next(step11()) //  db -> pdf   (students courses)
                 .build();
     }
 

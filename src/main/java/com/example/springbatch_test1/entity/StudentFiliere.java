@@ -1,19 +1,12 @@
 package com.example.springbatch_test1.entity;
 
-import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlRootElement;
-import lombok.Getter;
-import lombok.Setter;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 
-@Getter
-@Setter
-@Entity
 @XmlRootElement(name = "StudentFiliere")
 public class StudentFiliere {
 
