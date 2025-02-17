@@ -255,7 +255,7 @@ public class BatchConfig {
 
     /******************************** Step 4 : db to xml **********************************/
     /**
-     * Ce étape automatise l'importation des données de touts les étudiants à partir de la BD :
+     * Ce étape automatise l'importation des données de tout les étudiants à partir de la BD :
      * 1. Récuperation à partir de la table `student`.
      * 2. Traitement et transformation des données.
      * 3. Stockage des données dans `allStudents.xml`.
