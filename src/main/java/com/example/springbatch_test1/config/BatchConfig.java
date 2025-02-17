@@ -76,8 +76,15 @@ public class BatchConfig {
 
 
 
-
     /******************************* Step 1 : from csv to db *************************************/
+
+    /**
+     * Ce étape automatise l'importation des données des étudiants à partir d'un fichier CSV :
+     * 1. Lecture du fichier `students.csv`.
+     * 2. Traitement et transformation des données.
+     * 3. Stockage des données dans la table "student" en base de données.
+     */
+
 
     @Bean
     public FlatFileItemReader<Student> csvReader() {
@@ -143,6 +150,12 @@ public class BatchConfig {
 
 
     /******************************* Step 2 : from json to db *************************************/
+    /**
+     * Ce étape automatise l'importation des données des étudiants à partir d'un fichier Json :
+     * 1. Lecture du fichier `students.json`.
+     * 2. Traitement et transformation des données.
+     * 3. Stockage des données dans la table `student` en base de données.
+     */
 
 
     @Bean
@@ -169,6 +182,12 @@ public class BatchConfig {
 
 
     /******************************** Step 3 : excel to db **********************************/
+    /**
+     * Cet étape automatise l'importation des données des étudiants à partir d'un fichier Excel :
+     * 1. Lecture du fichier `students.xlsx`.
+     * 2. Traitement et transformation des données.
+     * 3. Stockage des données dans la table `student` en base de données.
+     */
 
 
     @Bean
@@ -235,6 +254,13 @@ public class BatchConfig {
 
 
     /******************************** Step 4 : db to xml **********************************/
+    /**
+     * Ce étape automatise l'importation des données de touts les étudiants à partir de la BD :
+     * 1. Récuperation à partir de la table `student`.
+     * 2. Traitement et transformation des données.
+     * 3. Stockage des données dans `allStudents.xml`.
+     */
+
 
     @Bean
     public StaxEventItemWriter<Student> xmlWriter3() {
@@ -270,6 +296,12 @@ public class BatchConfig {
 
 
     /******************************** Step 5 : csv to xml **********************************/
+    /**
+     * Ce étape automatise l'importation des données des étudiants à partir d'un fichier CSV :
+     * 1. Lecture du fichier `students.csv`.
+     * 2. Traitement et transformation des données.
+     * 3. Stockage des données dans `students.xml`.
+     */
 
 
     @Bean
@@ -309,6 +341,12 @@ public class BatchConfig {
 
 
     /******************************** Step 6 : from xml to db ************************************/
+    /**
+     * Ce étape automatise l'importation des données des cours à partir d'un fichier XML :
+     * 1. Lecture du fichier `courses.xml`.
+     * 2. Traitement et transformation des données.
+     * 3. Stockage des données dans la table `courses` en BD.
+     */
 
 
     @Bean
@@ -355,6 +393,13 @@ public class BatchConfig {
 
 
     /******************************* Step 7 : from db to db *************************************/
+    /**
+     * Ce étape automatise l'importation des données des étudiants à partir de la BD :
+     * 1. Récuperation à partir de la table `student`.
+     * 2. Traitement et transformation des données (génération des email académique à partir de leurs noms).
+     * 3. Stockage des données dans la table `academic-email` en BD.
+     */
+
 
     @Bean
     public JpaPagingItemReader<Student> studentDBReader() {
@@ -396,6 +441,12 @@ public class BatchConfig {
 
 
     /******************************* Step 8 : from db to json **************************************/
+    /**
+     * Ce étape automatise l'importation des données des étudiants à partir de la BD :
+     * 1. Récuperation à partir de la table `student`.
+     * 2. Traitement et transformation des données.
+     * 3. Stockage des données dans `students_filiere.json`.
+     */
 
 
     // Processor pour affecter les étudiants à une filière selon leur note generale
@@ -432,6 +483,12 @@ public class BatchConfig {
 
 
     /******************************** Step 9 : json to txt **********************************/
+    /**
+     * Ce étape automatise l'importation des données des étudiants et leurs filieres à partir du fichier JSON :
+     * 1. Lecture du fichier `students_filiere.json`.
+     * 2.
+     * 3. Stockage des données dans `students_filiere.txt`.
+     */
 
     @Bean
     public JsonItemReader<StudentFiliere> jsonFiliereReader() {
@@ -474,6 +531,13 @@ public class BatchConfig {
 
 
     /******************************** Step 10 : from txt to xml **********************************/
+    /**
+     * Ce étape automatise l'importation des données des étudiants et leurs filieres à partir de fichier TXT :
+     * 1. Lecture du fichier `students_filiere.txt`.
+     * 2.
+     * 3. Stockage des données dans `students_filiere.xml`.
+     */
+
 
     @Bean
     public FlatFileItemReader<StudentFiliere> txtReader() {
@@ -536,6 +600,14 @@ public class BatchConfig {
 
 
     /******************************** Step 11 : from db to pdf **********************************/
+    /**
+     * Ce étape automatise l'importation des données des étudiants et leurs cours à partir de la BD :
+     * 1. Récuperation à partir de la table `student`.
+     * 2. Traitement et transformation des données.
+     * 3. Stockage des données dans `course_students.pdf`.
+     */
+
+
 
     @Bean
     public CourseStudentProcessor courseStudentProcessor() {
@@ -621,7 +693,7 @@ public class BatchConfig {
                 .start(step1()) //  csv -> db   (infos students)
                 .next(step2()) //   json -> db  (infos students)
                 .next(step3()) //  excel to db  (infos students)
-                .next(step4()) // xml -> db     (infos students) 
+                .next(step4()) // xml -> db     (infos students)
                 .next(step5()) // csv to xml    (infos students)
                 .next(step6()) // db to xml     (infos courses)
                 .next(step7()) //  db -> db     (email generation)
