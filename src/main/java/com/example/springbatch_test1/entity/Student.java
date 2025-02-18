@@ -6,13 +6,16 @@ import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import lombok.*;
 
+
+
 @Entity
-@ToString(onlyExplicitlyIncluded = true)
-@NoArgsConstructor
+@Data
 @Builder
+@NoArgsConstructor
 @AllArgsConstructor
+@ToString(onlyExplicitlyIncluded = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@XmlRootElement(name = "Student")
+@XmlRootElement(name = "student")
 public class Student {
 
     @Id
@@ -27,6 +30,20 @@ public class Student {
     private Double noteGenerale;
 
 
+    public Student(){
+
+    }
+
+
+    public Student(int id, String firstName, String lastName, String age, String phoneNumber, double noteGenerale) {
+        this.id = id;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.age = age;
+        this.email = email;
+        this.phoneNumber = phoneNumber;
+        this.noteGenerale = noteGenerale;
+    }
 
 
     @XmlElement(name = "id")

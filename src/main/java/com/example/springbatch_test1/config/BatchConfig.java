@@ -1,11 +1,15 @@
 package com.example.springbatch_test1.config;
 
+import com.example.springbatch_test1.config.partitioner.StudentPartitioner;
+import com.example.springbatch_test1.config.processor.*;
 import com.example.springbatch_test1.entity.*;
+import com.example.springbatch_test1.mapper.StudentRowMapper;
 import com.example.springbatch_test1.repo.AcademicEmailRepository;
 import com.example.springbatch_test1.repo.CourseRepository;
 import com.example.springbatch_test1.repo.StudentRepository;
 import jakarta.persistence.EntityManagerFactory;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -16,6 +20,8 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
@@ -23,7 +29,8 @@ import org.springframework.batch.item.ExecutionContext;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.data.RepositoryItemWriter;
-import org.springframework.batch.item.database.JpaPagingItemReader;
+import org.springframework.batch.item.database.*;
+import org.springframework.batch.item.database.support.MySqlPagingQueryProvider;
 import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.LineMapper;
 import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
@@ -44,15 +51,20 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.oxm.jaxb.Jaxb2Marshaller;
 import org.springframework.transaction.PlatformTransactionManager;
 
+import javax.sql.DataSource;
 import java.io.*;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 
 @Configuration
+@EnableBatchProcessing
 @RequiredArgsConstructor
 public class BatchConfig {
 
@@ -73,6 +85,10 @@ public class BatchConfig {
 
     @Autowired
     private CourseRepository courseRepository;
+
+
+    @Autowired
+    private DataSource dataSource;
 
 
 
@@ -136,7 +152,7 @@ public class BatchConfig {
                 .reader(csvReader())
                 .processor(processor())
                 .writer(writer())
-                .build();
+               .build();
     }
 
 
@@ -145,10 +161,7 @@ public class BatchConfig {
 
 
 
-
-
-
-
+    
     /******************************* Step 2 : from json to db *************************************/
     /**
      * Ce étape automatise l'importation des données des étudiants à partir d'un fichier Json :
@@ -285,7 +298,7 @@ public class BatchConfig {
     public Step step4() {
         return new StepBuilder("DbToXml", jobRepository)
                 .<Student, Student>chunk(60, platformTransactionManager)
-                .reader(studentDBReader())
+                .reader(studentDBReader2())
                 .processor(processor())
                 .writer(xmlWriter3())
                 .build();
@@ -392,17 +405,17 @@ public class BatchConfig {
 
 
 
-    /******************************* Step 7 : from db to db *************************************/
+    /******************************* Step 7 : from db to json **************************************/
     /**
      * Ce étape automatise l'importation des données des étudiants à partir de la BD :
      * 1. Récuperation à partir de la table `student`.
-     * 2. Traitement et transformation des données (génération des email académique à partir de leurs noms).
-     * 3. Stockage des données dans la table `academic-email` en BD.
+     * 2. Traitement et transformation des données.
+     * 3. Stockage des données dans `students_filiere.json`.
      */
 
 
     @Bean
-    public JpaPagingItemReader<Student> studentDBReader() {
+    public JpaPagingItemReader<Student> studentDBReader2() {
         JpaPagingItemReader<Student> reader = new JpaPagingItemReader<>();
         reader.setQueryString("SELECT s FROM Student s");
         reader.setEntityManagerFactory(entityManagerFactory);
@@ -410,43 +423,6 @@ public class BatchConfig {
         return reader;
     }
 
-
-    @Bean
-    public StudentToAcademicEmailProcessor studentToAcademicEmailProcessor() {
-        return new StudentToAcademicEmailProcessor();
-    }
-
-    @Bean
-    public RepositoryItemWriter<AcademicEmail> academicEmaiDBlWriter() {
-        RepositoryItemWriter<AcademicEmail> writer = new RepositoryItemWriter<>();
-        writer.setRepository(academicEmailRepository);
-        writer.setMethodName("save");
-        return writer;
-    }
-
-
-    @Bean
-    public Step step7() {
-        return new StepBuilder("emailGeneration", jobRepository)
-                .<Student, AcademicEmail>chunk(6, platformTransactionManager)
-                .reader(studentDBReader())
-                .processor(studentToAcademicEmailProcessor())
-                .writer(academicEmaiDBlWriter())
-                .build();
-    }
-
-
-
-
-
-
-    /******************************* Step 8 : from db to json **************************************/
-    /**
-     * Ce étape automatise l'importation des données des étudiants à partir de la BD :
-     * 1. Récuperation à partir de la table `student`.
-     * 2. Traitement et transformation des données.
-     * 3. Stockage des données dans `students_filiere.json`.
-     */
 
 
     // Processor pour affecter les étudiants à une filière selon leur note generale
@@ -469,10 +445,10 @@ public class BatchConfig {
 
     // Step pour effectuer le traitement d'affectation des étudiants aux filières
     @Bean
-    public Step step8() {
+    public Step step7() {
         return new StepBuilder("dbToJson", jobRepository)
                 .<Student, StudentFiliere>chunk(6, platformTransactionManager)
-                .reader(studentDBReader())
+                .reader(studentDBReader2())
                 .processor(studentFiliereDBProcessor())
                 .writer(studentFiliereDBWriter())
                 .build();
@@ -482,7 +458,7 @@ public class BatchConfig {
 
 
 
-    /******************************** Step 9 : json to txt **********************************/
+    /******************************** Step 8 : json to txt **********************************/
     /**
      * Ce étape automatise l'importation des données des étudiants et leurs filieres à partir du fichier JSON :
      * 1. Lecture du fichier `students_filiere.json`.
@@ -518,7 +494,7 @@ public class BatchConfig {
 
 
     @Bean
-    public Step step9() {
+    public Step step8() {
         return new StepBuilder("jsonToTxt", jobRepository)
                 .<StudentFiliere, StudentFiliere>chunk(40, platformTransactionManager)
                 .reader(jsonFiliereReader())
@@ -530,7 +506,7 @@ public class BatchConfig {
 
 
 
-    /******************************** Step 10 : from txt to xml **********************************/
+    /******************************** Step 9 : from txt to xml **********************************/
     /**
      * Ce étape automatise l'importation des données des étudiants et leurs filieres à partir de fichier TXT :
      * 1. Lecture du fichier `students_filiere.txt`.
@@ -586,7 +562,7 @@ public class BatchConfig {
 
 
     @Bean
-    public Step step10() {
+    public Step step9() {
         return new StepBuilder("txtToXml", jobRepository)
                 .<StudentFiliere, StudentFiliere>chunk(40, platformTransactionManager)
                 .reader(txtReader())
@@ -599,7 +575,8 @@ public class BatchConfig {
 
 
 
-    /******************************** Step 11 : from db to pdf **********************************/
+
+    /******************************** Step 10 : from db to pdf **********************************/
     /**
      * Ce étape automatise l'importation des données des étudiants et leurs cours à partir de la BD :
      * 1. Récuperation à partir de la table `student`.
@@ -672,10 +649,10 @@ public class BatchConfig {
 
 
     @Bean
-    public Step step11() {
+    public Step step10() {
         return new StepBuilder("dbToPdf", jobRepository)
                 .<Student, CourseStudent>chunk(20, platformTransactionManager)
-                .reader(studentDBReader())
+                .reader(studentDBReader2())
                 .processor(courseStudentProcessor())
                 .writer(pdfCourseStudentWriter())
                 .build();
@@ -685,22 +662,92 @@ public class BatchConfig {
 
 
 
-    /******************************* Job ****************************************/
+
+
+    /******************************* from db to db using partitioner *************************************/
+    /**
+     * Ce étape automatise l'importation des données des étudiants à partir de la BD :
+     * 1. Récuperation à partir de la table `student` using partitioning.
+     * 2. Traitement et transformation des données (génération des email académique à partir de leurs noms).
+     * 3. Stockage des données dans la table `academic-email` en BD.
+     */
+
 
     @Bean
-    public Job runJob() {
-        return new JobBuilder("job", jobRepository)
-                .start(step1()) //  csv -> db   (infos students)
-                .next(step2()) //   json -> db  (infos students)
-                .next(step3()) //  excel to db  (infos students)
-                .next(step4()) // xml -> db     (infos students)
-                .next(step5()) // csv to xml    (infos students)
-                .next(step6()) // db to xml     (infos courses)
-                .next(step7()) //  db -> db     (email generation)
-                .next(step8())  //  db -> json  (students affectations)
-                .next(step9()) // json -> txt   (students affectations)
-                .next(step10())  // txt -> xml  (students affectations)
-                .next(step11()) //  db -> pdf   (students courses)
+    @StepScope
+    public JdbcPagingItemReader<Student> pagingItemReader(
+            @Value("#{stepExecutionContext['minValue']}") Long minValue,
+            @Value("#{stepExecutionContext['maxValue']}") Long maxValue,
+            @Value("#{stepExecutionContext['partition_number']}") Long partition_number) {
+        System.out.println("Partition "+ partition_number +" ,reading from " + minValue + " to " + maxValue);
+
+        Map<String, Order> sortKeys = new HashMap<>();
+        sortKeys.put("id", Order.ASCENDING);
+
+        MySqlPagingQueryProvider queryProvider = new MySqlPagingQueryProvider();
+        queryProvider.setSelectClause("id, first_name, last_name, age, email, phone_number, note_generale");
+        queryProvider.setFromClause("from student");
+        queryProvider.setWhereClause("where id >= " + minValue + " and id < " + maxValue);
+        queryProvider.setSortKeys(sortKeys);
+
+        JdbcPagingItemReader<Student> reader = new JdbcPagingItemReader<>();
+        reader.setDataSource(this.dataSource);
+        reader.setFetchSize(1000);
+        reader.setRowMapper(new StudentRowMapper());
+        reader.setQueryProvider(queryProvider);
+
+        return reader;
+    }
+
+
+
+    @Bean
+    public StudentToAcademicEmailProcessor studentToAcademicEmailProcessor() {
+        return new StudentToAcademicEmailProcessor();
+    }
+
+
+
+    @Bean
+    public RepositoryItemWriter<AcademicEmail> academicEmaiDBlWriter() {
+        RepositoryItemWriter<AcademicEmail> writer = new RepositoryItemWriter<>();
+        writer.setRepository(academicEmailRepository);
+        writer.setMethodName("save");
+        return writer;
+    }
+
+
+
+    @Bean
+    public StudentPartitioner partitioner() {
+        StudentPartitioner columnRangePartitioner = new StudentPartitioner();
+        columnRangePartitioner.setColumn("id");
+        columnRangePartitioner.setDataSource(dataSource);
+        columnRangePartitioner.setTable("student");
+        return columnRangePartitioner;
+    }
+
+
+
+    @Bean
+    public Step workStep() {
+        return new StepBuilder("WorkStep", jobRepository)
+                .<Student, AcademicEmail>chunk(1000, platformTransactionManager)
+                .reader(pagingItemReader(null, null,null))
+                .processor(studentToAcademicEmailProcessor())
+                .writer(academicEmaiDBlWriter())
+                .build();
+    }
+
+
+
+    @Bean
+    public Step masterStep() {
+        return new StepBuilder("MasterStep", jobRepository)
+                .partitioner(workStep().getName(), partitioner()) // division des partitions
+                .step(workStep())  // Exécuter chaque partition avec slaveStep
+                .gridSize(4)  // 4 workers en parallèle
+                .taskExecutor(new SimpleAsyncTaskExecutor()) // exécution des workSteps en parallèle
                 .build();
     }
 
@@ -711,16 +758,40 @@ public class BatchConfig {
 
 
 
+    /******************************* Job ****************************************/
+
+    @Bean
+    public Job job1() {
+        return new JobBuilder("job1", jobRepository)
+                .start(step1()) //  csv -> db   (infos students)
+                .next(step2()) //   json -> db  (infos students)
+                .next(step3()) //  excel to db  (infos students)
+                .next(step4()) // xml -> db     (infos students)
+                .next(step5()) // csv to xml    (infos students)
+                .next(step6()) // db to xml     (infos courses)
+                .build();
+    }
 
 
 
+    @Bean
+    public Job job2() {
+        return new JobBuilder("job2", jobRepository)
+                .start(step7())  //  db -> json  (students affectations)
+                .next(step8()) // json -> txt   (students affectations)
+                .next(step9())  // txt -> xml  (students affectations)
+                .next(step10()) //  db -> pdf   (students courses)
+                .build();
+    }
 
 
 
-
-
-
-
+    @Bean
+    public Job job3() {
+        return new JobBuilder("job3", jobRepository)
+                .start(masterStep())  // db -> db   using partitioning
+                .build();
+    }
 
 
 }

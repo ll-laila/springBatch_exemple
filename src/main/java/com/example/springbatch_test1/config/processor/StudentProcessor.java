@@ -1,4 +1,4 @@
-package com.example.springbatch_test1.config;
+package com.example.springbatch_test1.config.processor;
 
 
 import com.example.springbatch_test1.entity.Student;

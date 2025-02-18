@@ -1,4 +1,4 @@
-package com.example.springbatch_test1.config;
+package com.example.springbatch_test1.config.processor;
 
 import com.example.springbatch_test1.entity.AcademicEmail;
 import com.example.springbatch_test1.entity.Student;
@@ -10,7 +10,7 @@ public class StudentToAcademicEmailProcessor implements ItemProcessor<Student, A
 
     @Override
     public AcademicEmail process(Student student) throws Exception {
-        String email = student.getFirstName().toLowerCase() + "." + student.getLastName().toLowerCase() + "@university.com";
+        String email = student.getFirstName().toLowerCase() + "." + student.getLastName().toLowerCase() + "@uca.ac.ma";
         AcademicEmail academicEmail = new AcademicEmail();
         academicEmail.setStudentId(student.getId());
         academicEmail.setAcademicEmail(email);
