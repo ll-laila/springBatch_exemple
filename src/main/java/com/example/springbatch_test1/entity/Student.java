@@ -11,7 +11,6 @@ import lombok.*;
 @Entity
 @Data
 @Builder
-@NoArgsConstructor
 @AllArgsConstructor
 @ToString(onlyExplicitlyIncluded = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
@@ -35,7 +34,7 @@ public class Student {
     }
 
 
-    public Student(int id, String firstName, String lastName, String age, String phoneNumber, double noteGenerale) {
+    public Student(int id, String firstName, String lastName, String age, String email, String phoneNumber, double noteGenerale) {
         this.id = id;
         this.firstName = firstName;
         this.lastName = lastName;

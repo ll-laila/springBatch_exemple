@@ -147,7 +147,7 @@ public class BatchConfig {
 
     @Bean
     public Step step1() {
-        return new StepBuilder("CsvToDb", jobRepository)
+        return new StepBuilder("step1-CsvToDb", jobRepository)
                 .<Student, Student>chunk(20, platformTransactionManager)
                 .reader(csvReader())
                 .processor(processor())
@@ -161,7 +161,7 @@ public class BatchConfig {
 
 
 
-    
+
     /******************************* Step 2 : from json to db *************************************/
     /**
      * Ce étape automatise l'importation des données des étudiants à partir d'un fichier Json :
@@ -181,7 +181,7 @@ public class BatchConfig {
 
     @Bean
     public Step step2() {
-        return new StepBuilder("JsonToDb", jobRepository)
+        return new StepBuilder("Step2-JsonToDb", jobRepository)
                 .<Student, Student>chunk(20, platformTransactionManager)
                 .reader(jsonReader())
                 .processor(processor())
@@ -251,7 +251,7 @@ public class BatchConfig {
 
     @Bean
     public Step step3() {
-        return new StepBuilder("ExcelToDb", jobRepository)
+        return new StepBuilder("Step3-ExcelToDb", jobRepository)
                 .<Student, Student>chunk(10, platformTransactionManager)
                 .reader(excelReader())
                 .processor(processor())
@@ -296,7 +296,7 @@ public class BatchConfig {
 
     @Bean
     public Step step4() {
-        return new StepBuilder("DbToXml", jobRepository)
+        return new StepBuilder("Step4-DbToXml", jobRepository)
                 .<Student, Student>chunk(60, platformTransactionManager)
                 .reader(studentDBReader2())
                 .processor(processor())
@@ -338,7 +338,7 @@ public class BatchConfig {
 
     @Bean
     public Step step5() {
-        return new StepBuilder("CsvToXml", jobRepository)
+        return new StepBuilder("Step5-CsvToXml", jobRepository)
                 .<Student, Student>chunk(20, platformTransactionManager)
                 .reader(csvReader())
                 .processor(processor())
@@ -392,7 +392,7 @@ public class BatchConfig {
 
     @Bean
     public Step step6() {
-        return new StepBuilder("xmlToDB", jobRepository)
+        return new StepBuilder("Step6-xmlToDB", jobRepository)
                 .<Course, Course>chunk(3, platformTransactionManager)
                 .reader(xmlReader())
                 .processor(xmlProcessor())
@@ -446,7 +446,7 @@ public class BatchConfig {
     // Step pour effectuer le traitement d'affectation des étudiants aux filières
     @Bean
     public Step step7() {
-        return new StepBuilder("dbToJson", jobRepository)
+        return new StepBuilder("Step7-dbToJson", jobRepository)
                 .<Student, StudentFiliere>chunk(6, platformTransactionManager)
                 .reader(studentDBReader2())
                 .processor(studentFiliereDBProcessor())
@@ -495,7 +495,7 @@ public class BatchConfig {
 
     @Bean
     public Step step8() {
-        return new StepBuilder("jsonToTxt", jobRepository)
+        return new StepBuilder("Step8-jsonToTxt", jobRepository)
                 .<StudentFiliere, StudentFiliere>chunk(40, platformTransactionManager)
                 .reader(jsonFiliereReader())
                 .writer(txtStudentFiliereWriter())
@@ -563,7 +563,7 @@ public class BatchConfig {
 
     @Bean
     public Step step9() {
-        return new StepBuilder("txtToXml", jobRepository)
+        return new StepBuilder("Step9-txtToXml", jobRepository)
                 .<StudentFiliere, StudentFiliere>chunk(40, platformTransactionManager)
                 .reader(txtReader())
                 .writer(xmlWriter())
@@ -650,7 +650,7 @@ public class BatchConfig {
 
     @Bean
     public Step step10() {
-        return new StepBuilder("dbToPdf", jobRepository)
+        return new StepBuilder("Step10-dbToPdf", jobRepository)
                 .<Student, CourseStudent>chunk(20, platformTransactionManager)
                 .reader(studentDBReader2())
                 .processor(courseStudentProcessor())
