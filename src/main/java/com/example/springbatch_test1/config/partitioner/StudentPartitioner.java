@@ -1,7 +1,11 @@
 package com.example.springbatch_test1.config.partitioner;
 
+import com.example.springbatch_test1.entity.Student;
+import com.example.springbatch_test1.mapper.StudentRowMapper;
+import com.example.springbatch_test1.repo.StudentRepository;
 import org.springframework.batch.core.partition.support.Partitioner;
 import org.springframework.batch.item.ExecutionContext;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.jdbc.core.JdbcTemplate;
 import javax.sql.DataSource;
@@ -11,19 +15,18 @@ import java.util.Map;
 
 
 public class StudentPartitioner implements Partitioner {
-    private JdbcOperations jdbcTemplate;
-    private String table;
-    private String column;
 
-    public void setDataSource(DataSource dataSource) {
-        jdbcTemplate = new JdbcTemplate(dataSource);
-    }
+    @Autowired
+    private StudentRepository studentRepository;
+
+
 
     @Override
     public Map<String, ExecutionContext> partition(int gridSize)
     {
-        int min = jdbcTemplate.queryForObject("SELECT MIN(" + column + ") FROM " + table, Integer.class);
-        int max = jdbcTemplate.queryForObject("SELECT MAX(" + column + ") FROM " + table, Integer.class);
+
+        int min = studentRepository.findMinId();
+        int max = studentRepository.findMaxId();
 
         int targetSize = (max - min) / gridSize + 1;
 
@@ -55,13 +58,5 @@ public class StudentPartitioner implements Partitioner {
     }
 
 
-
-    public void setTable(String table) {
-        this.table = table;
-    }
-
-    public void setColumn(String column) {
-        this.column = column;
-    }
 
 }
