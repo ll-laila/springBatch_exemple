@@ -720,11 +720,7 @@ public class BatchConfig {
 
     @Bean
     public StudentPartitioner partitioner() {
-        StudentPartitioner columnRangePartitioner = new StudentPartitioner();
-        columnRangePartitioner.setColumn("id");
-        columnRangePartitioner.setDataSource(dataSource);
-        columnRangePartitioner.setTable("student");
-        return columnRangePartitioner;
+        return new StudentPartitioner();
     }
 
 

@@ -1,14 +1,9 @@
 package com.example.springbatch_test1.config.partitioner;
 
-import com.example.springbatch_test1.entity.Student;
-import com.example.springbatch_test1.mapper.StudentRowMapper;
 import com.example.springbatch_test1.repo.StudentRepository;
 import org.springframework.batch.core.partition.support.Partitioner;
 import org.springframework.batch.item.ExecutionContext;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcOperations;
-import org.springframework.jdbc.core.JdbcTemplate;
-import javax.sql.DataSource;
 import java.util.HashMap;
 import java.util.Map;
 
