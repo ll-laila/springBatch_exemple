@@ -1,0 +1,20 @@
+ID: 41, Nom: John Doe, Email: john.doe@example.com, Filière: computer science
+ID: 42, Nom: Jane Smith, Email: jane.smith@example.com, Filière: industrial engineering
+ID: 43, Nom: Ali Benchekroun, Email: ali.benchekroun@example.com, Filière: industrial engineering
+ID: 44, Nom: Sofia Mejri, Email: sofia.mejri@example.com, Filière: industrial engineering
+ID: 45, Nom: Karim El Amrani, Email: karim.elamrani@example.com, Filière: industrial engineering
+ID: 46, Nom: Linda Boukhari, Email: linda.boukhari@example.com, Filière: electrical engineering
+ID: 47, Nom: Omar Chakib, Email: omar.chakib@example.com, Filière: industrial engineering
+ID: 48, Nom: Fatima Zaidi, Email: fatima.zaidi@example.com, Filière: computer science
+ID: 49, Nom: Hassan Rahmouni, Email: hassan.rahmouni@example.com, Filière: electrical engineering
+ID: 50, Nom: Yasmine El Ghazi, Email: yasmine.elghazi@example.com, Filière: industrial engineering
+ID: 51, Nom: Mehdi Benjelloun, Email: mehdi.benjelloun@example.com, Filière: electrical engineering
+ID: 52, Nom: Sara El Mansouri, Email: sara.elmansouri@example.com, Filière: computer science
+ID: 53, Nom: Rachid Kabbaj, Email: rachid.kabbaj@example.com, Filière: industrial engineering
+ID: 54, Nom: Layla Oukili, Email: layla.oukili@example.com, Filière: computer science
+ID: 55, Nom: Ismail Ferhat, Email: ismail.ferhat@example.com, Filière: computer science
+ID: 56, Nom: Hind Belkhayat, Email: hind.belkhayat@example.com, Filière: industrial engineering
+ID: 57, Nom: Mohamed Skalli, Email: mohamed.skalli@example.com, Filière: computer science
+ID: 58, Nom: Nadia Tazi, Email: nadia.tazi@example.com, Filière: electrical engineering
+ID: 59, Nom: Khalid Benzakour, Email: khalid.benzakour@example.com, Filière: industrial engineering
+ID: 60, Nom: Zineb Moutawakil, Email: zineb.moutawakil@example.com, Filière: computer science
